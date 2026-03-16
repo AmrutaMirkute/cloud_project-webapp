@@ -1,3 +1,5 @@
+
+/*
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -42,3 +44,91 @@ app.get("/transactions", (req, res) => {
 app.listen(3000, () => {
     console.log("Server running on port 3000");
 });
+const express = require("express")
+const cors = require("cors")
+const axios = require("axios")
+
+const app = express()
+
+app.use(express.json())
+app.use(cors())
+app.use(express.static("public"))
+
+app.post("/pay", async (req,res)=>{
+
+  try{
+
+    const response = await axios.post(
+      "http://10.0.2.199:4000/pay",
+      req.body
+    )
+
+    res.json(response.data)
+
+  }catch(err){
+
+    res.status(500).send(err.message)
+
+  }
+
+})
+
+app.listen(3000,()=>{
+  console.log("Web App running on port 3000")
+})
+  */
+ const express = require("express")
+const cors = require("cors")
+const axios = require("axios")
+const path = require("path")
+
+const app = express()
+
+app.use(express.json())
+app.use(cors())
+app.use(express.static(path.join(__dirname,"public")))
+
+/* CREATE PAYMENT */
+
+app.post("/pay", async (req,res)=>{
+
+try{
+
+const response = await axios.post(
+"http://10.0.2.199:4000/pay",
+req.body
+)
+
+res.json(response.data)
+
+}catch(err){
+
+res.status(500).send(err.message)
+
+}
+
+})
+
+/* FETCH TRANSACTIONS */
+
+app.get("/transactions/:account_id", async (req,res)=>{
+
+try{
+
+const response = await axios.get(
+`http://10.0.2.199:4000/transactions/${req.params.account_id}`
+)
+
+res.json(response.data)
+
+}catch(err){
+
+res.status(500).send(err.message)
+
+}
+
+})
+
+app.listen(3000,()=>{
+console.log("Web App running on port 3000")
+})
