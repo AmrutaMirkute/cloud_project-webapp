@@ -1,108 +1,179 @@
-const express = require("express")
-const cors = require("cors")
-const mysql = require("mysql2")
+const express = require("express");
+const cors = require("cors");
+const mysql = require("mysql2");
 
-const app = express()
+const app = express();
 
-app.use(express.json())
-app.use(cors())
+app.use(express.json());
+app.use(cors());
 
-/* DATABASE CONNECTION */
+/* =========================
+   DATABASE CONNECTION
+========================= */
 
 const db = mysql.createConnection({
+  host: "database-1.c74e0usig97j.us-east-2.rds.amazonaws.com",
+  user: "admin",
+  password: "CloudProject5",
+  database: "cloud_project", // change if using different DB
+  port: 3306
+});
 
-host:"cloud-project-db.cla2ucqwa0yx.us-east-2.rds.amazonaws.com",
-user:"admin",
-password:"CloudProject5",
-database:"mysql",
-port:3306
+db.connect(err => {
+  if (err) {
+    console.log("Database connection error:", err);
+  } else {
+    console.log("Connected to RDS");
+  }
+});
 
-})
+/* =========================
+   LOGIN (DB VALIDATION)
+========================= */
 
-db.connect(err=>{
+app.post("/login", (req, res) => {
 
-if(err){
-console.log("Database connection error:",err)
-}else{
-console.log("Connected to RDS")
-}
+  const { email, password } = req.body;
 
-})
+  if (!email || !password) {
+    return res.status(400).json({ message: "Missing credentials" });
+  }
 
-/* CREATE PAYMENT */
+  const query = "SELECT * FROM users WHERE email = ?";
 
-app.post("/payment",(req,res)=>{
+  db.query(query, [email], (err, results) => {
 
-const {account_id,amount,merchant_name} = req.body
+    if (err) return res.status(500).send(err);
 
-const transactionQuery =
-"INSERT INTO transactions (account_id,amount,transaction_type,status) VALUES (?,?,?,?)"
+    if (results.length === 0) {
+      return res.status(401).json({ message: "User not found" });
+    }
 
-db.query(
-transactionQuery,
-[account_id,amount,"payment","success"],
-(err,result)=>{
+    const user = results[0];
 
-if(err) return res.status(500).send(err)
+    // ⚠️ For demo (plain password)
+    if (user.password !== password) {
 
-const transaction_id = result.insertId
+      /* LOG SECURITY EVENT */
+      db.query(
+        "INSERT INTO security_events (user_id, event_type, description) VALUES (?, ?, ?)",
+        [user.user_id, "FAILED_LOGIN", "Invalid password attempt"]
+      );
 
-const paymentQuery =
-"INSERT INTO payments (transaction_id,merchant_name,amount,status) VALUES (?,?,?,?)"
+      return res.status(401).json({ message: "Invalid password" });
+    }
 
-db.query(
-paymentQuery,
-[transaction_id,merchant_name,amount,"completed"],
-(err2)=>{
+    /* LOG AUDIT EVENT */
+    db.query(
+      "INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)",
+      [user.user_id, "LOGIN_SUCCESS", req.ip]
+    );
 
-if(err2) return res.status(500).send(err2)
+    res.json({
+      message: "Login successful",
+      user_id: user.user_id
+    });
 
-res.json({
+  });
 
-message:"Payment Successful",
-transaction_id
+});
 
-})
+/* =========================
+   CREATE PAYMENT
+========================= */
 
-}
+app.post("/payment", (req, res) => {
 
-)
+  const { account_id, amount, merchant_name } = req.body;
 
-}
+  if (!account_id || !amount) {
+    return res.status(400).json({ message: "Missing payment data" });
+  }
 
-)
+  const transactionQuery =
+    "INSERT INTO transactions (account_id, amount, transaction_type, status) VALUES (?,?,?,?)";
 
-})
+  db.query(
+    transactionQuery,
+    [account_id, amount, "payment", "success"],
+    (err, result) => {
 
-/* FETCH TRANSACTIONS */
+      if (err) return res.status(500).send(err);
 
-app.get("/transactions/:account_id",(req,res)=>{
+      const transaction_id = result.insertId;
 
-const query = `
-SELECT
-t.transaction_id,
-t.amount,
-t.transaction_type,
-t.status,
-t.created_at,
-p.merchant_name
-FROM transactions t
-LEFT JOIN payments p
-ON t.transaction_id = p.transaction_id
-WHERE t.account_id = ?
-ORDER BY t.created_at DESC
-`
+      const paymentQuery =
+        "INSERT INTO payments (transaction_id, merchant_name, amount, status) VALUES (?,?,?,?)";
 
-db.query(query,[req.params.account_id],(err,result)=>{
+      db.query(
+        paymentQuery,
+        [transaction_id, merchant_name, amount, "completed"],
+        (err2) => {
 
-if(err) return res.status(500).send(err)
+          if (err2) return res.status(500).send(err2);
 
-res.json(result)
+          /* AUDIT LOG */
+          db.query(
+            "INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)",
+            [1, "PAYMENT_MADE", req.ip] // replace 1 with actual user_id if available
+          );
 
-})
+          res.json({
+            message: "Payment Successful",
+            transaction_id
+          });
 
-})
+        }
+      );
 
-app.listen(5000,()=>{
-console.log("Payment Service running on port 5000")
-})
+    }
+  );
+
+});
+
+/* =========================
+   FETCH TRANSACTIONS
+========================= */
+
+app.get("/transactions/:account_id", (req, res) => {
+
+  const query = `
+    SELECT
+      t.transaction_id,
+      t.amount,
+      t.transaction_type,
+      t.status,
+      t.created_at,
+      p.merchant_name
+    FROM transactions t
+    LEFT JOIN payments p
+    ON t.transaction_id = p.transaction_id
+    WHERE t.account_id = ?
+    ORDER BY t.created_at DESC
+  `;
+
+  db.query(query, [req.params.account_id], (err, result) => {
+
+    if (err) return res.status(500).send(err);
+
+    res.json(result);
+
+  });
+
+});
+
+/* =========================
+   HEALTH CHECK
+========================= */
+
+app.get("/", (req, res) => {
+  res.send("Payment Service is running");
+});
+
+/* =========================
+   START SERVER
+========================= */
+
+app.listen(5000, () => {
+  console.log("Payment Service running on port 5000");
+});
