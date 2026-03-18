@@ -82,7 +82,7 @@ app.post("/login", (req, res) => {
    CREATE PAYMENT
 ========================= */
 
-app.post("/payment", (req, res) => {
+app.post("/pay", (req, res) => {
 
   const { account_id, amount, merchant_name } = req.body;
 
@@ -174,6 +174,6 @@ app.get("/", (req, res) => {
    START SERVER
 ========================= */
 
-app.listen(5000, () => {
+app.listen(5000, "0.0.0.0", () => {
   console.log("Payment Service running on port 5000");
 });

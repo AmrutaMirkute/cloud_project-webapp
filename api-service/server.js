@@ -39,7 +39,7 @@ app.post("/pay", async (req, res) => {
   try {
 
     const response = await axios.post(
-      "http://10.0.2.67:5000/payment",
+      "http://10.0.2.67:5000/pay",
       req.body
     );
 
@@ -62,7 +62,7 @@ app.get("/transactions/:account_id", async (req, res) => {
   try {
 
     const response = await axios.get(
-      `http://10.0.2.68:5000/transactions/${req.params.account_id}`
+      `http://10.0.2.67:5000/transactions/${req.params.account_id}`
     );
 
     res.json(response.data);

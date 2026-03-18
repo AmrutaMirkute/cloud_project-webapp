@@ -46,7 +46,7 @@ app.post("/pay", async (req, res) => {
 app.get("/transactions/:account_id", async (req, res) => {
   try {
     const response = await axios.get(
-      `http://10.0.2.199:4000/transactions/${req.params.account_id}`
+      `http://10.0.1.70:4000/transactions/${req.params.account_id}`
     );
 
     res.json(response.data);
