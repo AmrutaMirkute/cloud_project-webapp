@@ -17,6 +17,9 @@
 
 <h3 class="mb-4">Make Payment</h3>
 
+<label class="form-label">Account Number</label>
+<input id="account_id" type="number" class="form-control mb-3" placeholder="account_id">
+
 <label class="form-label">Merchant Name</label>
 <input id="merchant" class="form-control mb-3" placeholder="Merchant Name">
 
@@ -34,7 +37,6 @@
 </div>
 
 <script>
-
 async function pay(){
 
 const amount = document.getElementById("amount").value
@@ -56,30 +58,24 @@ headers:{
 },
 
 body:JSON.stringify({
-
-account_id:1,
+account_id,
 amount:amount,
 merchant_name:merchant
-
 })
 
 })
 
 const data = await response.json()
-
 alert(data.message)
 
 document.getElementById("amount").value=""
 document.getElementById("merchant").value=""
 
 }catch(err){
-
 alert("Payment failed")
-
 }
 
 }
-
 </script>
 
 </body>
