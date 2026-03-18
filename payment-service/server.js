@@ -91,11 +91,11 @@ app.post("/pay", (req, res) => {
   }
 
   const transactionQuery =
-    "INSERT INTO transactions (account_id, amount, transaction_type, status) VALUES (?,?,?,?)";
+    "INSERT INTO transactions (amount, transaction_type, status) VALUES (?,?,?,?)";
 
   db.query(
     transactionQuery,
-    [account_id, amount, "payment", "success"],
+    [ amount, "payment", "success"],
     (err, result) => {
 
       if (err) return res.status(500).send(err);
